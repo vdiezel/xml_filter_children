@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# to execute, put this file into the directory of the .exb files, then make this file executable:
+# chmod +x viktorize
+
+# then to run the bash script:
+# ./viktorize
+
+# This script works only when all events in the XML files are on separate line
+# (we have to use awk to filter the events because xmlstarlet does not support regexes afaik);
+# To guarantee that property, we use "xmlstarlet fo" to format the input
+
+mkdir -p output
+
+for name in ./*.exb; do
+
+  # create filtered events in tier[@category='tok_part'] by removing all events that contain a single digit, two digits, or the wierd pause dot
+  # (we use head and tail to remove the "tier" wrapper)
+  EVENTS_FILTERED=$(xmlstarlet fo "$name" | xmlstarlet sel -t -c "/basic-transcription/basic-body/tier[@category='tok_part']" | awk '!/<event.*>([0-9]|[0-9][0-9]|•)<\/event>/' | head -n -1 | tail -n+2)
+
+  # create a new tier[@category='tok_part'] by replacing it with our filtered version
+  # of events; because awk escapes certain XML characters like "<" and ">", we need to unescape them; finally we format the output again
+  xmlstarlet ed -u "/basic-transcription/basic-body/tier[@category='tok_part']" -v "${EVENTS_FILTERED}" "$name" | xmlstarlet unesc | xmlstarlet fo > output/"$name"
+
+done

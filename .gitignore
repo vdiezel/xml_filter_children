@@ -1,0 +1,3 @@
+*.exb
+node_modules
+r/.Rproj.user
