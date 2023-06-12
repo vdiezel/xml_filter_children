@@ -1,0 +1,39 @@
+#!/bin/bash
+
+mkdir -p output
+
+# xmlstarlet has no easy option to clone nodes including their attributes.
+# That is why we extract the attributes + values with an xmlstarlet query
+# and then re-apply them in the last step on the cloned tier in the output document
+
+for name in ./*.exb; do
+  echo "viktorizing ${name}"
+
+  # extract the current attributes (so we can attach them to the clone) and replace attributes where required using sed
+  ATTRIBUTES=$(xmlstarlet sel -t -m "basic-transcription/basic-body/tier[@category='tok_part']/@*" -v "concat(name(), '=', .)" -n "${name}" \
+    | sed -E 's/id=(TIE0_TOK|TIE1)/id=\1_CLEAN/' \
+    | sed -E 's/tok_part/tok_part_clean/g' \
+    | sed -E 's/type=t/type=a/')
+
+  # echo "$ATTRIBUTES"
+
+  # filter events (same as previous script)
+  EVENTS_FILTERED=$(xmlstarlet fo "$name" \
+    | xmlstarlet sel -t -c "/basic-transcription/basic-body/tier[@category='tok_part']" \
+    | awk '!/<event.*>([0-9]|[0-9][0-9]|•)<\/event>/' \
+    | head -n -1 \
+    | tail -n+2)
+
+  # create a copy of the document with the filtered events
+  xmlstarlet ed -s "/basic-transcription/basic-body" -t elem -n 'tier' -v "${EVENTS_FILTERED}" "${name}"  \
+    | xmlstarlet unesc \
+    | xmlstarlet fo > output/"$name"
+
+  # now setting the attributes (they are stored as individual lines in form attr_name=attr_value)
+  while IFS= read -r line; do
+    ATTR_NAME=$(echo "$line" | awk -F'=' '{print $1}')
+    ATTR_VALUE=$(echo "$line" | awk -F'=' '{print $2}')
+    xmlstarlet ed --inplace -a "/basic-transcription/basic-body/tier[last()]" -t attr -n "${ATTR_NAME}" -v "${ATTR_VALUE}" output/"${name}"
+  done <<< "$ATTRIBUTES"
+
+done
