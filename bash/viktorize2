@@ -24,9 +24,15 @@ for name in ./*.exb; do
     | head -n -1 \
     | tail -n+2)
 
+  #(xmlstarlet has not released a fix to https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=837122;
+  # it is on master, but has no release...that means we have to manage ampersand ourselves by replacing it
+  # with AMPER_SAND before we unescape the document, and then reverting that after the unescaping)
+
   # create a copy of the document with the filtered events
-  xmlstarlet ed -s "/basic-transcription/basic-body" -t elem -n 'tier' -v "${EVENTS_FILTERED}" "${name}"  \
+     sed -E 's/&/AMPER_SAND/g' "${name}" \
+    | xmlstarlet ed -s "/basic-transcription/basic-body" -t elem -n 'tier' -v "${EVENTS_FILTERED}"  \
     | xmlstarlet unesc \
+    | sed -E 's/AMPER_SAND/\&/g' \
     | xmlstarlet fo > output/"$name"
 
   # now setting the attributes (they are stored as individual lines in form attr_name=attr_value)
