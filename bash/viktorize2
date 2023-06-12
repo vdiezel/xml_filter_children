@@ -20,7 +20,7 @@ for name in ./*.exb; do
   # filter events (same as previous script)
   EVENTS_FILTERED=$(xmlstarlet fo "$name" \
     | xmlstarlet sel -t -c "/basic-transcription/basic-body/tier[@category='tok_part']" \
-    | awk '!/<event.*>([0-9]|[0-9][0-9]|•)<\/event>/' \
+    | awk '!/<event.*>([0-9]|[0-9][0-9]|•|[1-9]s)<\/event>/' \
     | head -n -1 \
     | tail -n+2)
 
